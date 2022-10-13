@@ -10,7 +10,7 @@ export class OrangePromise3 {
   _rejectionTasks = [];
   _promiseState = 'pending';
   _promiseResult = undefined;
-  _settledOrLockedIn = false; // [new]
+  _alreadyResolved = false; // [new]
 
   then(onFulfilled, onRejected) {
     const resultPromise = new OrangePromise3();
@@ -51,38 +51,40 @@ export class OrangePromise3 {
   }
 
   resolve(value) { // [new]
-    if(this._settledOrLockedIn) return this;
-    this._settledOrLockedIn = true;
-    this._coreResolve(value);
-    return this; // enable chaining
-  }
+    if(this._alreadyResolved) return this;
+    this._alreadyResolved = true;
 
-  // don't understand
-  _coreResolve(value) {
-    // Is "value" a thenable?
-    if (typeof value === 'object' && value !== null && 'then' in value) {
+    if (isThenable(value)) {
       // Forward fulfillments and rejections from `value` to `this`.
       // The callbacks are always executed asynchronous
       value.then(
-        (result) => this._coreResolve(result),
-        (error) => this._coreReject(error)
+        (result) => this._doFulfill(result),
+        (error) => this._doReject(error)
       )
     } else {
-      this._promiseState = 'fulfilled';
-      this._promiseResult = value;
-      this._clearAndEnqueueTasks(this._fulfillmentTasks);
+      this.doFulfill(value);
     }
+
+    return this; // enable chaining
+  }
+
+  _doFulfill(value) { // [new]
+    assert.ok(!isThenable(value));
+    this._promiseState = 'fulfilled';
+    this._promiseResult = value;
+
+    this._clearAndEnqueueTasks(this._fulfillmentTasks)
   }
 
   reject(error) {
-    if (this._settledOrLockedIn) return this;
-    this._settledOrLockedIn = true
-    this._coreReject(error);
+    if (this._alreadyResolved) return this;
+    this._alreadyResolved = true
+    this._doReject(error);
     return this;
   }
   
   // Only a separate method because it's called from ._coreResolve()
-  _coreReject(error) {
+  _doReject(error) {
     this._promiseState = 'rejected';
     this._promiseResult = error;
     this._clearAndEnqueueTasks(this._rejectionTasks);
@@ -93,6 +95,10 @@ export class OrangePromise3 {
     this._rejectionTasks = undefined;
     tasks.map(addToTaskQueue);
   }
+}
+
+function isThenable(value) {
+  return typeof value === 'object' && value !== null && typeof value.then === 'function'
 }
 
 function addToTaskQueue(task) {
