@@ -1,3 +1,5 @@
+import * as assert from 'assert';
+
 // New features:
 // resolve() "flattens" parameter "value" if it it a promise
 // (the state of "this" becomes locked in on 'value')
@@ -30,7 +32,7 @@ export class OrangePromise3 {
         const returned = onRejected(this._promiseResult);
         resultPromise.resolve(returned);
       } else {
-        resultPromise.resolve(this._promiseResult);
+        resultPromise.reject(this._promiseResult);
       }
     };
 
@@ -44,6 +46,7 @@ export class OrangePromise3 {
         break;
       case 'rejected':
         addToTaskQueue(rejectionTask);
+        break;
       default:
         throw new Error();
     }
@@ -62,14 +65,14 @@ export class OrangePromise3 {
         (error) => this._doReject(error)
       )
     } else {
-      this.doFulfill(value);
+      this._doFulfill(value);
     }
 
     return this; // enable chaining
   }
 
   _doFulfill(value) { // [new]
-    assert.ok(!isThenable(value));
+    // assert.ok(!isThenable(value));
     this._promiseState = 'fulfilled';
     this._promiseResult = value;
 

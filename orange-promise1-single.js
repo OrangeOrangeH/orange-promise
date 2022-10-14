@@ -1,3 +1,5 @@
+import * as assert from 'assert';
+
 export class OrangePromise1 {
   _fulfillmentTasks = [];
   _rejectionTasks = [];
@@ -28,7 +30,6 @@ export class OrangePromise1 {
   }
 
   resolve(value) {
-    console.log('xxx', this._promiseState);
     if(this._promiseState !== 'pending') return this;
     this._promiseState = 'fulfilled';
     this._promiseResult = value;
@@ -54,3 +55,4 @@ export class OrangePromise1 {
 function addToTaskQueue(task) {
   setTimeout(task, 0);
 }
+

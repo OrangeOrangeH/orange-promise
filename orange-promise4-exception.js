@@ -1,3 +1,5 @@
+import * as assert from 'assert';
+
 // features:
 // Turn exceptions in user code into rejections
 
@@ -43,6 +45,7 @@ export class OrangePromise4 {
         break;
       case 'rejected':
         addToTaskQueue(rejectionTask);
+        break;
       default:
         throw new Error();
     }
@@ -77,9 +80,9 @@ export class OrangePromise4 {
   }
 
   _doFulfill(value) {
-    assert.ok(!isThenable(value));
     this._promiseState = 'fulfilled';
     this._promiseResult = value;
+    this._clearAndEnqueueTasks(this._fulfillmentTasks);
   }
 
   reject(error) {
@@ -99,7 +102,7 @@ export class OrangePromise4 {
   _clearAndEnqueueTasks(tasks) {
     this._fulfillmentTasks = undefined;
     this._rejectionTasks = undefined;
-    task.map(addToTaskQueue);
+    tasks.map(addToTaskQueue);
   }
 }
 
