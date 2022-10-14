@@ -1,7 +1,11 @@
-import * as assert from 'assert';
+// Features:
+// * Turn exceptions in user code into rejections
+//
+// Changes:
+// * .then() executes onFulfilled and onRejected differently
+// * New method .catch()
 
-// features:
-// Turn exceptions in user code into rejections
+import * as assert from 'assert';
 
 export class OrangePromise4 {
   _fulfillmentTasks = [];
@@ -9,11 +13,11 @@ export class OrangePromise4 {
   _promiseResult = undefined;
   _promiseState = 'pending';
   _alreadyResolved = false;
-
+  
   then(onFulfilled, onRejected) {
     const resultPromise = new OrangePromise4();
 
-    // Runs if the Promise is fulfilled(now or later)
+    // Runs if the Promise is fulfilled (now or later)
     const fulfillmentTask = () => {
       if (typeof onFulfilled === 'function') {
         this._runReactionSafely(resultPromise, onFulfilled); // [new]
@@ -21,21 +25,21 @@ export class OrangePromise4 {
         // `onFulfilled` is missing
         // => we must pass on the fulfillment value
         resultPromise.resolve(this._promiseResult);
-      }
-    }
+      }  
+    };
 
     const rejectionTask = () => {
       if (typeof onRejected === 'function') {
-        this._runReactionSafely(resultPromise, onRejected);
+        this._runReactionSafely(resultPromise, onRejected); // [new]
       } else {
         // `onRejected` is missing
         // => we must pass on the rejection value
         resultPromise.reject(this._promiseResult);
       }
-    }
+    };
+
 
     switch (this._promiseState) {
-      // TODO: figure out when tasks in _fulfillmentTasks called?
       case 'pending':
         this._fulfillmentTasks.push(fulfillmentTask);
         this._rejectionTasks.push(rejectionTask);
@@ -52,18 +56,21 @@ export class OrangePromise4 {
     return resultPromise;
   }
 
-  _runReactionSafely(resultPromise, reaction) {// [new]
+  _runReactionSafely(resultPromise, reaction) { // [new]
     try {
       const returned = reaction(this._promiseResult);
       resultPromise.resolve(returned);
-    } catch (onRejected) { // [new]
-      return this.then(null, onRejected)
+    } catch (e) {
+      resultPromise.reject(e);
     }
+  }
+
+  catch(onRejected) { // [new]
+    return this.then(null, onRejected);
   }
 
   resolve(value) {
     if (this._alreadyResolved) return this;
-
     this._alreadyResolved = true;
 
     if (isThenable(value)) {
@@ -71,15 +78,16 @@ export class OrangePromise4 {
       // The callbacks are always executed asynchronously
       value.then(
         (result) => this._doFulfill(result),
-        (error) => this._doReject(error)
-      )
+        (error) => this._doReject(error));
     } else {
-      this._doFulfill(value)
+      this._doFulfill(value);
     }
-    return this;
+
+    return this; // enable chaining
   }
 
   _doFulfill(value) {
+    assert.ok(!isThenable(value));
     this._promiseState = 'fulfilled';
     this._promiseResult = value;
     this._clearAndEnqueueTasks(this._fulfillmentTasks);
@@ -89,16 +97,14 @@ export class OrangePromise4 {
     if (this._alreadyResolved) return this;
     this._alreadyResolved = true;
     this._doReject(error);
-    return this;
+    return this; // enable chaining
   }
-
-  // Only a separate method because it’s called from ._coreResolve()
   _doReject(error) {
     this._promiseState = 'rejected';
     this._promiseResult = error;
     this._clearAndEnqueueTasks(this._rejectionTasks);
   }
-
+  
   _clearAndEnqueueTasks(tasks) {
     this._fulfillmentTasks = undefined;
     this._rejectionTasks = undefined;
@@ -107,9 +113,10 @@ export class OrangePromise4 {
 }
 
 function isThenable(value) {
-  return typeof value === 'object' && value !== null && typeof value.then === 'function'
+  return typeof value === 'object' && value !== null
+    && typeof value.then === 'function';
 }
 
 function addToTaskQueue(task) {
-  setTimeout(task, 0)
+  setTimeout(task, 0);
 }
